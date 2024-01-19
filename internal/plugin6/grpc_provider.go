@@ -74,6 +74,19 @@ type GRPCProvider struct {
 	schema providers.GetProviderSchemaResponse
 }
 
+func GetConfigTree(p *GRPCProvider) {
+	const maxRecvSize = 64 << 20
+
+	protoResp, err := p.client.GetProviderSchema(p.ctx, &proto6.GetProviderSchema_Request{IsGetConfigTree: true}, grpc.MaxRecvMsgSizeCallOption{MaxRecvMsgSize: maxRecvSize})
+
+	if err != nil {
+		logger.Trace("GRPCProvider GetConfigTree err: ", err)
+		return
+	}
+	logger.Trace("GRPCProvider GetConfigTree protoResp: ", protoResp)
+
+}
+
 func (p *GRPCProvider) GetProviderSchema() (resp providers.GetProviderSchemaResponse) {
 	logger.Trace("GRPCProvider.v6: GetProviderSchema")
 	p.mu.Lock()
@@ -110,6 +123,8 @@ func (p *GRPCProvider) GetProviderSchema() (resp providers.GetProviderSchemaResp
 	// size much higher on the server side, which is the supported method for
 	// determining payload size.
 	const maxRecvSize = 64 << 20
+
+	//
 	protoResp, err := p.client.GetProviderSchema(p.ctx, new(proto6.GetProviderSchema_Request), grpc.MaxRecvMsgSizeCallOption{MaxRecvMsgSize: maxRecvSize})
 	if err != nil {
 		resp.Diagnostics = resp.Diagnostics.Append(grpcErr(err))

@@ -98,6 +98,8 @@ func (p *MockProvider) GetProviderSchema() providers.GetProviderSchemaResponse {
 	return p.getSchema()
 }
 
+func (p *MockProvider) GetConfigTree() {}
+
 func (p *MockProvider) getSchema() providers.GetProviderSchemaResponse {
 	// This version of getSchema doesn't do any locking, so it's suitable to
 	// call from other methods of this mock as long as they are already

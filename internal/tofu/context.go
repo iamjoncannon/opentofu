@@ -89,6 +89,11 @@ type Context struct {
 	runContextCancel    context.CancelFunc
 }
 
+// POC
+func (c *Context) GetPlugins() *contextPlugins {
+	return c.plugins
+}
+
 // (additional methods on Context can be found in context_*.go files.)
 
 // NewContext creates a new Context structure.

@@ -10,12 +10,14 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/opentofu/opentofu/internal/backend"
 	"github.com/opentofu/opentofu/internal/configs"
 	"github.com/opentofu/opentofu/internal/configs/configload"
 	"github.com/opentofu/opentofu/internal/plans/planfile"
+	"github.com/opentofu/opentofu/internal/plugin6"
 	"github.com/opentofu/opentofu/internal/states/statemgr"
 	"github.com/opentofu/opentofu/internal/tfdiags"
 	"github.com/opentofu/opentofu/internal/tofu"
@@ -141,8 +143,50 @@ func (b *Local) localRun(op *backend.Operation) (*backend.LocalRun, *configload.
 func (b *Local) localRunDirect(op *backend.Operation, run *backend.LocalRun, coreOpts *tofu.ContextOpts, s statemgr.Full) (*backend.LocalRun, *configload.Snapshot, tfdiags.Diagnostics) {
 	var diags tfdiags.Diagnostics
 
-	// Load the configuration using the caller-provided configuration loader.
-	config, configSnap, configDiags := op.ConfigLoader.LoadConfigWithSnapshot(op.ConfigDir)
+	tfCtx, moreDiags := tofu.NewContext(coreOpts)
+
+	// WORKING HERE
+
+	for addr, _ := range coreOpts.Providers {
+
+		hostname := addr.Hostname
+		provider_type := addr.Type
+
+		// POC
+		if provider_type == "configprovider" {
+
+			log.Printf("[INFO] hostname %v provider_type %v", hostname, provider_type)
+
+			provider, err := tfCtx.GetPlugins().NewProviderInstance(addr)
+
+			prov, ok := provider.(*plugin6.GRPCProvider)
+
+			if ok {
+
+				plugin6.GetConfigTree(prov)
+			}
+
+			if err != nil {
+				log.Printf("[INFO] resourceTypes err %v", err)
+				continue
+			}
+
+		}
+
+	}
+
+	var config *configs.Config
+	var configSnap *configload.Snapshot
+	var configDiags hcl.Diagnostics
+
+	if false {
+
+	} else {
+
+		// Load the configuration using the caller-provided configuration loader.
+		config, configSnap, configDiags = op.ConfigLoader.LoadConfigWithSnapshot(op.ConfigDir)
+	}
+
 	diags = diags.Append(configDiags)
 	if configDiags.HasErrors() {
 		return nil, nil, diags
@@ -219,7 +263,6 @@ func (b *Local) localRunDirect(op *backend.Operation, run *backend.LocalRun, cor
 	}
 	run.InputState = state
 
-	tfCtx, moreDiags := tofu.NewContext(coreOpts)
 	diags = diags.Append(moreDiags)
 	if moreDiags.HasErrors() {
 		return nil, nil, diags

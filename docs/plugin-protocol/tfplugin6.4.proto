@@ -171,8 +171,11 @@ service Provider {
 }
 
 message GetProviderSchema {
+    
     message Request {
+        bool Is_get_config_tree = 1;
     }
+
     message Response {
         Schema provider = 1;
         map<string, Schema> resource_schemas = 2;
@@ -386,3 +389,29 @@ message ReadDataSource {
         repeated Diagnostic diagnostics = 2;
     }
 }
+
+// configs.Config
+message ConfigTree {
+    ConfigTree Root = 1;
+    ConfigTree Parent = 2;
+    repeated string Path = 3;
+    map<string, ConfigTree> Children = 4;
+    Module Module = 5;
+    Range CallRange = 6;
+    ModuleSource SourceAddr = 7;
+    string SourceAddrRaw = 8;
+    Range SourceAddrRange = 9;
+    Version Version = 10;
+}
+
+// configs.Module
+message Module {}
+
+// hcl.Range
+message Range {}
+
+// addrs.ModuleSource
+message ModuleSource {}
+
+// version.Version
+message Version {}
