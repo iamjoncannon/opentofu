@@ -81,14 +81,18 @@ func (cp *contextPlugins) ProviderSchema(addr addrs.Provider) (providers.Provide
 		return schemas, nil
 	}
 
+	log.Printf("[TRACE] provider addr %v", addr)
+
 	log.Printf("[TRACE] tofu.contextPlugins: Initializing provider %q to read its schema", addr)
+
 	provider, err := cp.NewProviderInstance(addr)
+
 	if err != nil {
 		return schemas, fmt.Errorf("failed to instantiate provider %q to obtain schema: %w", addr, err)
 	}
 	defer provider.Close()
 
-	resp := provider.GetProviderSchema()
+	resp := provider.GetProviderSchema() //
 	if resp.Diagnostics.HasErrors() {
 		return resp, fmt.Errorf("failed to retrieve schema from provider %q: %w", addr, resp.Diagnostics.Err())
 	}

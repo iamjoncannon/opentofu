@@ -33,8 +33,9 @@ type GRPCProviderPlugin struct {
 
 func (p *GRPCProviderPlugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
 	return &GRPCProvider{
-		client: proto6.NewProviderClient(c),
-		ctx:    ctx,
+		client:                        proto6.NewProviderClient(c),
+		configuration_provider_client: proto6.NewPlatformConfigurationProviderClient(c),
+		ctx:                           ctx,
 	}, nil
 }
 
@@ -62,7 +63,8 @@ type GRPCProvider struct {
 	Addr addrs.Provider
 
 	// Proto client use to make the grpc service calls.
-	client proto6.ProviderClient
+	client                        proto6.ProviderClient
+	configuration_provider_client proto6.PlatformConfigurationProviderClient
 
 	// this context is created by the plugin package, and is canceled when the
 	// plugin process ends.

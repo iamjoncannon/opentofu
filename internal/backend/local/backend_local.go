@@ -152,8 +152,10 @@ func (b *Local) localRunDirect(op *backend.Operation, run *backend.LocalRun, cor
 		hostname := addr.Hostname
 		provider_type := addr.Type
 
+		log.Printf("[INFO] localRunDirect addr %v", addr)
+
 		// POC
-		if provider_type == "configprovider" {
+		if provider_type == "simple" {
 
 			log.Printf("[INFO] hostname %v provider_type %v", hostname, provider_type)
 
@@ -163,7 +165,9 @@ func (b *Local) localRunDirect(op *backend.Operation, run *backend.LocalRun, cor
 
 			if ok {
 
-				plugin6.GetConfigTree(prov)
+				prov.GetPlatformConfiguration()
+				prov.Close()
+				// plugin6.GetConfigTree(prov)
 			}
 
 			if err != nil {

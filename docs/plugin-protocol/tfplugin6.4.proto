@@ -170,6 +170,18 @@ service Provider {
     rpc StopProvider(StopProvider.Request) returns (StopProvider.Response);
 }
 
+service PlatformConfigurationProvider {
+    rpc GetPlatformConfiguration(GetPlatformConfiguration.Request) returns (GetPlatformConfiguration.Response) ;
+}
+
+message GetPlatformConfiguration {
+    message Request {}
+
+    message Response {
+        PlatformConfigurationTree platformConfiguration = 1;
+    }
+}
+
 message GetProviderSchema {
     
     message Request {
@@ -391,11 +403,11 @@ message ReadDataSource {
 }
 
 // configs.Config
-message ConfigTree {
-    ConfigTree Root = 1;
-    ConfigTree Parent = 2;
+message PlatformConfigurationTree {
+    PlatformConfigurationTree Root = 1;
+    PlatformConfigurationTree Parent = 2;
     repeated string Path = 3;
-    map<string, ConfigTree> Children = 4;
+    map<string, PlatformConfigurationTree> Children = 4;
     Module Module = 5;
     Range CallRange = 6;
     ModuleSource SourceAddr = 7;
