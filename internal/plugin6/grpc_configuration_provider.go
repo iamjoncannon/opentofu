@@ -17,6 +17,6 @@ func (p *GRPCProvider) GetPlatformConfiguration() {
 		return
 	}
 
-	logger.Trace("GRPCProvider GetPlatformConfiguration getPlatformConfiguration_Response ", "response", getPlatformConfiguration_Response)
+	logger.Trace("--GIGAN-- GRPCProvider GetPlatformConfiguration getPlatformConfiguration_Response ", "response", getPlatformConfiguration_Response)
 
 }

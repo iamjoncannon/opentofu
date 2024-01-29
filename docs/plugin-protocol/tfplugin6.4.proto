@@ -178,7 +178,7 @@ message GetPlatformConfiguration {
     message Request {}
 
     message Response {
-        PlatformConfigurationTree platformConfiguration = 1;
+        PlatformConfigurationTree platformConfigurationTree = 1;
     }
 }
 
@@ -402,22 +402,25 @@ message ReadDataSource {
     }
 }
 
-// configs.Config
 message PlatformConfigurationTree {
-    PlatformConfigurationTree Root = 1;
-    PlatformConfigurationTree Parent = 2;
-    repeated string Path = 3;
-    map<string, PlatformConfigurationTree> Children = 4;
-    Module Module = 5;
-    Range CallRange = 6;
-    ModuleSource SourceAddr = 7;
-    string SourceAddrRaw = 8;
-    Range SourceAddrRange = 9;
-    Version Version = 10;
+    map<string,PlatformConfigurationNode> platformConfigurationNodeHash = 1;
+    map<string,string> serializedModuleHash = 2;
 }
 
-// configs.Module
-message Module {}
+// configs.Config
+message PlatformConfigurationNode {
+    string Root = 1; // name of root PlatformConfigurationTree
+    string Parent = 2; // name of this nodes parent PlatformConfigurationTree
+    repeated string Path = 3;
+    map<string, string> Children = 4; // map of node name to PlatformConfigurationTree
+    string Module = 5; // name of this module
+    // Range CallRange = 6;
+    // ModuleSource SourceAddr = 7;
+    // string SourceAddrRaw = 8;
+    // Range SourceAddrRange = 9;
+    // Version Version = 10; 
+}
+
 
 // hcl.Range
 message Range {}

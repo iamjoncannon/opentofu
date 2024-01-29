@@ -146,28 +146,21 @@ func (b *Local) localRunDirect(op *backend.Operation, run *backend.LocalRun, cor
 	tfCtx, moreDiags := tofu.NewContext(coreOpts)
 
 	// WORKING HERE
-
 	for addr, _ := range coreOpts.Providers {
 
-		hostname := addr.Hostname
 		provider_type := addr.Type
-
-		log.Printf("[INFO] localRunDirect addr %v", addr)
 
 		// POC
 		if provider_type == "simple" {
 
-			log.Printf("[INFO] hostname %v provider_type %v", hostname, provider_type)
-
 			provider, err := tfCtx.GetPlugins().NewProviderInstance(addr)
 
-			prov, ok := provider.(*plugin6.GRPCProvider)
+			grpc_provider, ok := provider.(*plugin6.GRPCProvider)
 
 			if ok {
 
-				prov.GetPlatformConfiguration()
-				prov.Close()
-				// plugin6.GetConfigTree(prov)
+				grpc_provider.GetPlatformConfiguration()
+				grpc_provider.Close()
 			}
 
 			if err != nil {

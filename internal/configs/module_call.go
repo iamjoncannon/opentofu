@@ -101,15 +101,18 @@ func decodeModuleBlock(block *hcl.Block, override bool) (*ModuleCall, hcl.Diagno
 				// paths.
 				switch err := err.(type) {
 				case *getmodules.MaybeRelativePathErr:
-					diags = append(diags, &hcl.Diagnostic{
-						Severity: hcl.DiagError,
-						Summary:  "Invalid module source address",
-						Detail: fmt.Sprintf(
-							"OpenTofu failed to determine your intended installation method for remote module package %q.\n\nIf you intended this as a path relative to the current module, use \"./%s\" instead. The \"./\" prefix indicates that the address is a relative filesystem path.",
-							err.Addr, err.Addr,
-						),
-						Subject: mc.SourceAddrRange.Ptr(),
-					})
+
+					// POC-- generalize to all config providers
+					// diags = append(diags, &hcl.Diagnostic{
+					// 	Severity: hcl.DiagError,
+					// 	Summary:  "Invalid module source address",
+					// 	Detail: fmt.Sprintf(
+					// 		"OpenTofu failed to determine your intended installation method for remote module package %q.\n\nIf you intended this as a path relative to the current module, use \"./%s\" instead. The \"./\" prefix indicates that the address is a relative filesystem path.",
+					// 		err.Addr, err.Addr,
+					// 	),
+					// 	Subject: mc.SourceAddrRange.Ptr(),
+					// })
+
 				default:
 					if haveVersionArg {
 						// In this case we'll include some extra context that
