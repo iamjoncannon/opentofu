@@ -1,187 +1,63 @@
-package plugin6
+package config_tree
 
 import (
-	"fmt"
-	"io"
+	"strings"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/opentofu/opentofu/internal/addrs"
 	"github.com/opentofu/opentofu/internal/configs"
+	tf_core_config "github.com/opentofu/opentofu/internal/configs"
 	"github.com/opentofu/opentofu/internal/configs/configload"
-	"github.com/opentofu/opentofu/internal/plugin6/config_tree"
 	"github.com/opentofu/opentofu/internal/tfplugin6"
-	"google.golang.org/grpc"
 )
 
-// WORKING HERE \\
-func (p *GRPCProvider) GetPlatformConfiguration() (config *configs.Config, configSnap *configload.Snapshot) {
+func (c *DemoConfigTreeBuilder) new_main_module_instance_node(module configs.Module) ModuleInstanceNode {
 
-	const maxRecvSize = 64 << 20
-
-	in := &tfplugin6.GetPlatformConfiguration_Request{}
-
-	stream_client, err := p.configuration_provider_client.GetPlatformConfiguration(p.ctx, in, grpc.MaxRecvMsgSizeCallOption{MaxRecvMsgSize: maxRecvSize})
-
-	if err != nil {
-		logger.Trace("[ERROR] GRPCProvider GetPlatformConfiguration", "err", err)
-		return nil, nil
+	get_blank_range := func() hcl.Range {
+		return hcl.Range{Filename: "", Start: hcl.Pos{0, 0, 0}, End: hcl.Pos{0, 0, 0}}
 	}
 
-	module_shard_map := make(config_tree.ModuleShardMap)
-	module_instance_to_class_map := make(config_tree.ModuleInstanceToClassMap)
-
-	for {
-
-		response, err := stream_client.Recv()
-
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			logger.Trace(fmt.Sprintf("err module_shard %+v %+v", response, err))
-			break
-		}
-
-		if response.ModuleShard != nil {
-			module_class_id := response.ModuleShard.ModuleClassId
-			module_shard_map[module_class_id] = append(module_shard_map[module_class_id], response.ModuleShard)
-		}
-
-		if response.ModuleInstanceToClassMap != nil && len(response.ModuleInstanceToClassMap) > 0 {
-			module_instance_to_class_map = response.ModuleInstanceToClassMap
-		}
-
+	main_config_struct := configs.Config{
+		Root:            nil,
+		Parent:          nil,
+		Path:            addrs.Module{},
+		Children:        make(map[string]*configs.Config),
+		Module:          &module,
+		CallRange:       get_blank_range(),
+		SourceAddr:      nil,
+		SourceAddrRaw:   "",
+		SourceAddrRange: get_blank_range(),
+		Version:         nil,
 	}
 
-	module_shard_container := config_tree.ModuleShardContainer{
-		ModuleShardMap:           module_shard_map,
-		ModuleInstanceToClassMap: module_instance_to_class_map,
+	main_config_struct.Root = &main_config_struct
+
+	return main_config_struct
+}
+
+func (c *DemoConfigTreeBuilder) new_module_instance_node(
+	module_class *tf_core_config.Module,
+	module_instance_path []string,
+	call_range hcl.Range,
+) *tf_core_config.Config {
+
+	main_config_struct := configs.Config{ // a wrapper for the instance, not class
+		Root:            c.RootModuleInstanceNode,
+		Parent:          nil,
+		Path:            module_instance_path, // module.network_east instance path
+		Children:        make(map[string]*configs.Config),
+		Module:          module_class,                            // the module class
+		CallRange:       call_range,                              // call range for the parent ModuleCall Block
+		SourceAddr:      nil,                                     // folder location of the module class
+		SourceAddrRaw:   strings.Join(module_instance_path, "/"), // folder location of the module class
+		SourceAddrRange: call_range,                              // field on the module call with folder location
+		Version:         nil,
 	}
 
-	config_tree_builder := config_tree.DemoConfigTreeBuilder{
-		Module_shard_container: module_shard_container,
-	}
-
-	return config_tree_builder.Build()
+	return &main_config_struct
 }
 
 /*
-
-modules.json in .terraform/modules folder
-
-"Source"- for local, this is the relative file path
-"Dir"- for local, this is the subdirectory in the modules folder without the relative file path prefix
-
-{
-	"Modules":[
-		{"Key":"","Source":"","Dir":"."},  													// main module
-
-		{"Key":"network_east","Source":"./modules/networking","Dir":"modules/networking"},
-
-		{"Key":"network_west","Source":"./modules/networking","Dir":"modules/networking"}
-	]
-}
-
-
-*/
-
-/*
-
-structure of normal Config Tree
-
-in our conceptual schema
-	- "Config" maps to the module instance tree structure
-	- the Module property is the module class for each instance
-
-main Config struct
-
-config &{
-	Root:0xc00063c0e0 				// pointing to itself
-	Parent:<nil>
-	Path:
-	Children:map[
-		network_east:0xc00063d500	// key is module instance name, value is Config struct
-		network_west:0xc00063d6c0
-	]
-	Module:0xc00063e270
-	CallRange::0,0-0 				// main config struct has no call range, so call range must refer to the ModuleCall code location
-	SourceAddr:<nil>
-	SourceAddrRaw:
-	SourceAddrRange::0,0-0 			// addr range for main is also null
-	Version:<nil>
-}
-
-Module &{
-	SourceDir:.
-	CoreVersionConstraints:[]
-	ActiveExperiments:map[]
-	Backend:<nil>
-	CloudConfig:<nil>
-	ProviderConfigs:map[aws.east:0xc0006faf00 aws.west:0xc0006fb040]
-	ProviderRequirements:0xc000503ef0
-	ProviderLocalNames:map[registry.opentofu.org/hashicorp/aws:aws]
-	ProviderMetas:map[]
-	Variables:map[private_subnet_cidrs:0xc0008aab60 public_subnet_cidrs:0xc0008aa9c0]
-	Locals:map[]
-	Outputs:map[]
-	ModuleCalls:map[network_east:0xc00081b680 network_west:0xc00081b500]
-	ManagedResources:map[]
-	DataResources:map[]
-	Moved:[]
-	Import:[]
-	Checks:map[]
-	Tests:map[]
-}
-
-
-===============
-
-module.network_east Config struct
-
-config &{
-	Root:0xc000829c00
-	Parent:0xc000829c00
-	Path:module.network_east
-	Children:map[]
-	Module:0xc0008e75f0
-	CallRange:main.tf:39,1-22 				// code location of the module instance name label
-	SourceAddr:./modules/networking
-	SourceAddrRaw:
-	SourceAddrRange:main.tf:40,12-34		// code location of the source directory property
-	Version:<nil>
-}
-
-Module &{
-	SourceDir:modules/networking
-	CoreVersionConstraints:[]
-	ActiveExperiments:map[]
-	Backend:<nil>
-	CloudConfig:<nil>
-	ProviderConfigs:map[]
-	ProviderRequirements:0xc0002d4d70
-	ProviderLocalNames:map[registry.opentofu.org/hashicorp/aws:aws]
-	ProviderMetas:map[]
-	Variables:map[base_cidr_block:0xc0008e7040 private_subnet_cidrs:0xc0008e72b0 public_subnet_cidrs:0xc0008e71e0 region:0xc0008e7110]
-	Locals:map[] Outputs:map[] ModuleCalls:map[]
-	ManagedResources:map[aws_internet_gateway.main:0xc0006f5860 aws_subnet.private-a:0xc0006f51e0 aws_subnet.private-b:0xc0006f5520 aws_subnet.public-a:0xc0006f5040 aws_subnet.public-b:0xc0006f5380 aws_vpc.main:0xc0006f56c0]
-	DataResources:map[]
-	Moved:[]
-	Import:[]
-	Checks:map[]
-	Tests:map[]
-}
-
-*/
-
-/*
-
-configSnap &{
-	Modules:map[
-		:0xc0008df560 					// main module's module path is ""
-		network_east:0xc0008a3e30 		// key is module instance name
-		network_west:0xc0008def60
-		]
-	}
-
 
 snapshotModule for main
 
@@ -213,3 +89,28 @@ snapshotModule network_east and network_west
 	}
 
 */
+
+// generate modulesnapshot for ModuleClass
+func (c *DemoConfigTreeBuilder) get_module_snapshot(
+	module_instance_path []string,
+	module_instance_id ModuleInstanceId,
+	module_shards []*tfplugin6.ModuleShard,
+) *configload.SnapshotModule {
+
+	file_map := make(map[string][]byte)
+
+	for _, shard := range module_shards {
+
+		name := shard.RawFileContainer.Path
+		file := shard.RawFileContainer.Bytes
+
+		file_map[name] = file
+	}
+
+	return &configload.SnapshotModule{
+		Dir:        strings.Join(module_instance_path, "/"),
+		Files:      file_map,
+		SourceAddr: strings.Join(module_instance_path, "/"),
+		Version:    nil,
+	}
+}

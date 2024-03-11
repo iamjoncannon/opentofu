@@ -205,6 +205,137 @@ func (p *Parser) loadConfigFile(path string, override bool) (*File, hcl.Diagnost
 	return file, diags
 }
 
+func DecodeBlock(block *hcl.Block, diags hcl.Diagnostics, file *File, override bool) {
+
+	switch block.Type {
+
+	case "terraform":
+		content, contentDiags := block.Body.Content(terraformBlockSchema)
+		diags = append(diags, contentDiags...)
+
+		// We ignore the "terraform_version", "language" and "experiments"
+		// attributes here because sniffCoreVersionRequirements and
+		// sniffActiveExperiments already dealt with those above.
+
+		for _, innerBlock := range content.Blocks {
+			switch innerBlock.Type {
+
+			case "backend":
+				backendCfg, cfgDiags := decodeBackendBlock(innerBlock)
+				diags = append(diags, cfgDiags...)
+				if backendCfg != nil {
+					file.Backends = append(file.Backends, backendCfg)
+				}
+
+			case "cloud":
+				cloudCfg, cfgDiags := decodeCloudBlock(innerBlock)
+				diags = append(diags, cfgDiags...)
+				if cloudCfg != nil {
+					file.CloudConfigs = append(file.CloudConfigs, cloudCfg)
+				}
+
+			case "required_providers":
+				reqs, reqsDiags := decodeRequiredProvidersBlock(innerBlock)
+				diags = append(diags, reqsDiags...)
+				file.RequiredProviders = append(file.RequiredProviders, reqs)
+
+			case "provider_meta":
+				providerCfg, cfgDiags := decodeProviderMetaBlock(innerBlock)
+				diags = append(diags, cfgDiags...)
+				if providerCfg != nil {
+					file.ProviderMetas = append(file.ProviderMetas, providerCfg)
+				}
+
+			default:
+				// Should never happen because the above cases should be exhaustive
+				// for all block type names in our schema.
+				continue
+
+			}
+		}
+
+	case "required_providers":
+		// required_providers should be nested inside a "terraform" block
+		diags = append(diags, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "Invalid required_providers block",
+			Detail:   "A \"required_providers\" block must be nested inside a \"terraform\" block.",
+			Subject:  block.TypeRange.Ptr(),
+		})
+
+	case "provider":
+		cfg, cfgDiags := decodeProviderBlock(block)
+		diags = append(diags, cfgDiags...)
+		if cfg != nil {
+			file.ProviderConfigs = append(file.ProviderConfigs, cfg)
+		}
+
+	case "variable":
+		cfg, cfgDiags := decodeVariableBlock(block, override)
+		diags = append(diags, cfgDiags...)
+		if cfg != nil {
+			file.Variables = append(file.Variables, cfg)
+		}
+
+	case "locals":
+		defs, defsDiags := decodeLocalsBlock(block)
+		diags = append(diags, defsDiags...)
+		file.Locals = append(file.Locals, defs...)
+
+	case "output":
+		cfg, cfgDiags := decodeOutputBlock(block, override)
+		diags = append(diags, cfgDiags...)
+		if cfg != nil {
+			file.Outputs = append(file.Outputs, cfg)
+		}
+
+	case "module":
+		cfg, cfgDiags := decodeModuleBlock(block, override)
+		diags = append(diags, cfgDiags...)
+		if cfg != nil {
+			file.ModuleCalls = append(file.ModuleCalls, cfg)
+		}
+
+	case "resource":
+		cfg, cfgDiags := decodeResourceBlock(block, override)
+		diags = append(diags, cfgDiags...)
+		if cfg != nil {
+			file.ManagedResources = append(file.ManagedResources, cfg)
+		}
+
+	case "data":
+		cfg, cfgDiags := decodeDataBlock(block, override, false)
+		diags = append(diags, cfgDiags...)
+		if cfg != nil {
+			file.DataResources = append(file.DataResources, cfg)
+		}
+
+	case "moved":
+		cfg, cfgDiags := decodeMovedBlock(block)
+		diags = append(diags, cfgDiags...)
+		if cfg != nil {
+			file.Moved = append(file.Moved, cfg)
+		}
+
+	case "import":
+		cfg, cfgDiags := decodeImportBlock(block)
+		diags = append(diags, cfgDiags...)
+		if cfg != nil {
+			file.Import = append(file.Import, cfg)
+		}
+
+	case "check":
+		cfg, cfgDiags := decodeCheckBlock(block, override)
+		diags = append(diags, cfgDiags...)
+		if cfg != nil {
+			file.Checks = append(file.Checks, cfg)
+		}
+
+	default:
+	}
+
+}
+
 // sniffCoreVersionRequirements does minimal parsing of the given body for
 // "terraform" blocks with "required_version" attributes, returning the
 // requirements found.
@@ -319,6 +450,8 @@ var terraformBlockSchema = &hcl.BodySchema{
 		},
 	},
 }
+
+var TerraformBlockSchema = terraformBlockSchema
 
 // configFileTerraformBlockSniffRootSchema is a schema for
 // sniffCoreVersionRequirements and sniffActiveExperiments.

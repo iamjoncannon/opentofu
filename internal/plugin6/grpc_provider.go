@@ -79,7 +79,7 @@ type GRPCProvider struct {
 func GetConfigTree(p *GRPCProvider) {
 	const maxRecvSize = 64 << 20
 
-	protoResp, err := p.client.GetProviderSchema(p.ctx, &proto6.GetProviderSchema_Request{IsGetConfigTree: true}, grpc.MaxRecvMsgSizeCallOption{MaxRecvMsgSize: maxRecvSize})
+	protoResp, err := p.client.GetProviderSchema(p.ctx, &proto6.GetProviderSchema_Request{}, grpc.MaxRecvMsgSizeCallOption{MaxRecvMsgSize: maxRecvSize})
 
 	if err != nil {
 		logger.Trace("GRPCProvider GetConfigTree err: ", err)

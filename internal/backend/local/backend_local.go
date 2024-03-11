@@ -145,13 +145,21 @@ func (b *Local) localRunDirect(op *backend.Operation, run *backend.LocalRun, cor
 
 	tfCtx, moreDiags := tofu.NewContext(coreOpts)
 
-	// WORKING HERE
+	var config *configs.Config
+	var configSnap *configload.Snapshot
+	var configDiags hcl.Diagnostics
+
+	// WORKING HERE \\
 	for addr, _ := range coreOpts.Providers {
 
 		provider_type := addr.Type
 
-		// POC
-		if provider_type == "simple" {
+		log.Printf("[INFO] provider_type %v ", provider_type)
+
+		interpreter_key := "-interpreter"
+
+		// TODO- add provider type to terraform schema
+		if strings.Contains(provider_type, interpreter_key) {
 
 			provider, err := tfCtx.GetPlugins().NewProviderInstance(addr)
 
@@ -159,7 +167,7 @@ func (b *Local) localRunDirect(op *backend.Operation, run *backend.LocalRun, cor
 
 			if ok {
 
-				grpc_provider.GetPlatformConfiguration()
+				config, configSnap = grpc_provider.GetPlatformConfiguration()
 				grpc_provider.Close()
 			}
 
@@ -172,22 +180,40 @@ func (b *Local) localRunDirect(op *backend.Operation, run *backend.LocalRun, cor
 
 	}
 
-	var config *configs.Config
-	var configSnap *configload.Snapshot
-	var configDiags hcl.Diagnostics
-
 	if false {
 
 	} else {
 
 		// Load the configuration using the caller-provided configuration loader.
-		config, configSnap, configDiags = op.ConfigLoader.LoadConfigWithSnapshot(op.ConfigDir)
+		// config, configSnap, configDiags = op.ConfigLoader.LoadConfigWithSnapshot(op.ConfigDir)
 	}
 
+	// for _, c := range []*configs.Config{config} {
+
+	// 	log.Printf("")
+	// 	log.Printf("[INFO] config %+v", c)
+	// 	log.Printf("[INFO] config Children %+v", c.Children)
+	// 	log.Printf("[INFO] config Module %+v", c.Module)
+	// 	log.Printf("[INFO] config SourceAddr %+v", c.SourceAddr)
+	// 	log.Printf("[INFO] config SourceAddrRaw %+v", c.SourceAddrRaw)
+	// 	log.Printf("[INFO] config Version %+v", c.Version)
+	// }
+
+	// log.Printf("[INFO] configSnap %+v", configSnap)
+
+	// for snapshotModuleKey, snapshotModule := range configSnap.Modules {
+
+	// 	log.Printf("[INFO] snapshotModuleKey %+v", snapshotModuleKey)
+	// 	log.Printf("[INFO] snapshotModule %+v", snapshotModule)
+
+	// }
+
 	diags = diags.Append(configDiags)
+
 	if configDiags.HasErrors() {
 		return nil, nil, diags
 	}
+
 	run.Config = config
 
 	if errs := config.VerifyDependencySelections(op.DependencyLocks); len(errs) > 0 {

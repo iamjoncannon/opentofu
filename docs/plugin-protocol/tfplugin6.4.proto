@@ -170,24 +170,34 @@ service Provider {
     rpc StopProvider(StopProvider.Request) returns (StopProvider.Response);
 }
 
+// WORKING HERE 
 service PlatformConfigurationProvider {
-    rpc GetPlatformConfiguration(GetPlatformConfiguration.Request) returns (GetPlatformConfiguration.Response) ;
+    rpc GetPlatformConfiguration(GetPlatformConfiguration.Request) returns (stream GetPlatformConfiguration.Response);
 }
 
 message GetPlatformConfiguration {
     message Request {}
-
     message Response {
-        PlatformConfigurationTree platformConfigurationTree = 1;
+        ModuleShard moduleShard = 1;
+        map<string,string> moduleInstanceToClassMap = 2;
     }
 }
 
-message GetProviderSchema {
-    
-    message Request {
-        bool Is_get_config_tree = 1;
-    }
+message ModuleShard {
+	string ModuleClassId = 1;
+    int32 Shard = 2;
+    int32 TotalShards = 3;
+    RawFileContainer RawFileContainer = 4;
+}
 
+message RawFileContainer {
+    bytes Bytes = 1;
+    string Path = 2;
+}
+
+message GetProviderSchema {
+
+    message Request {}
     message Response {
         Schema provider = 1;
         map<string, Schema> resource_schemas = 2;
@@ -403,16 +413,19 @@ message ReadDataSource {
 }
 
 message PlatformConfigurationTree {
+
     map<string,PlatformConfigurationNode> platformConfigurationNodeHash = 1;
-    map<string,string> serializedModuleHash = 2;
+    // serialized configs.Module, i.e. the 'module class'
+    map<string,bytes> serializedModuleHash = 2;
 }
 
 // configs.Config
 message PlatformConfigurationNode {
+    // these strings are the id of the module instance
     string Root = 1; // name of root PlatformConfigurationTree
     string Parent = 2; // name of this nodes parent PlatformConfigurationTree
     repeated string Path = 3;
-    map<string, string> Children = 4; // map of node name to PlatformConfigurationTree
+    map<string, string> Children = 4; // map of module instance to module class
     string Module = 5; // name of this module
     // Range CallRange = 6;
     // ModuleSource SourceAddr = 7;
